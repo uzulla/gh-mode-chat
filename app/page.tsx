@@ -1,0 +1,257 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Loader2, Send, Plus, Trash2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+
+// OpenAIのモデルリスト
+const DEFAULT_MODELS = ["openai/gpt-4o", "openai/gpt-4-turbo", "openai/gpt-3.5-turbo"]
+
+interface Message {
+  role: "user" | "assistant" | "system"
+  content: string
+}
+
+export default function Home() {
+  const [token, setToken] = useState("")
+  const [models, setModels] = useState<string[]>(DEFAULT_MODELS)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODELS[0])
+  const [newModel, setNewModel] = useState("")
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [response, setResponse] = useState("")
+  const [showJson, setShowJson] = useState(false)
+  const [requestJson, setRequestJson] = useState("")
+  const [responseJson, setResponseJson] = useState("")
+
+  const addModel = () => {
+    if (newModel && !models.includes(newModel)) {
+      setModels([...models, newModel])
+      setNewModel("")
+    }
+  }
+
+  const removeModel = (modelToRemove: string) => {
+    const updatedModels = models.filter((model) => model !== modelToRemove)
+    setModels(updatedModels)
+    if (selectedModel === modelToRemove) {
+      setSelectedModel(updatedModels[0] || "")
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || !token || !selectedModel) return
+
+    const newMessages = [...messages, { role: "user", content: input }]
+    setMessages(newMessages)
+    setInput("")
+    setLoading(true)
+
+    try {
+      const requestBody = {
+        messages: newMessages,
+        model: selectedModel,
+      }
+
+      setRequestJson(JSON.stringify(requestBody, null, 2))
+
+      const response = await fetch("https://models.github.ai/inference/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const data = await response.json()
+      setResponseJson(JSON.stringify(data, null, 2))
+
+      if (data.choices && data.choices.length > 0) {
+        const assistantMessage = data.choices[0].message
+        setMessages([...newMessages, assistantMessage])
+        setResponse(assistantMessage.content)
+      } else {
+        console.error("予期しないレスポンス形式:", data)
+      }
+    } catch (error) {
+      console.error("APIリクエストエラー:", error)
+      setResponseJson(JSON.stringify({ error: "APIリクエストに失敗しました" }, null, 2))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-6 text-center">GitHub Models チャットインターフェース</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>設定</CardTitle>
+              <CardDescription>APIトークンとモデルを設定してください</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="token">GitHub トークン</Label>
+                <Input
+                  id="token"
+                  type="password"
+                  placeholder="ghp_..."
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>現在のモデル</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="モデルを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>モデル管理</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="新しいモデルを追加"
+                    value={newModel}
+                    onChange={(e) => setNewModel(e.target.value)}
+                  />
+                  <Button size="icon" onClick={addModel}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="mt-2 space-y-2">
+                  {models.map((model) => (
+                    <div key={model} className="flex justify-between items-center p-2 bg-secondary rounded-md">
+                      <span className="text-sm truncate">{model}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeModel(model)}
+                        disabled={models.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch id="show-json" checked={showJson} onCheckedChange={setShowJson} />
+                <Label htmlFor="show-json">JSONリクエスト/レスポンスを表示</Label>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-2">
+          <Tabs defaultValue="chat">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="chat">チャット</TabsTrigger>
+              <TabsTrigger value="json" disabled={!showJson}>
+                JSON
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="chat">
+              <Card>
+                <CardHeader>
+                  <CardTitle>チャット</CardTitle>
+                  <CardDescription>GitHub AI APIを使用したチャット</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px] overflow-y-auto mb-4 space-y-4 p-4 border rounded-md">
+                    {messages.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        メッセージはまだありません。会話を始めましょう。
+                      </div>
+                    ) : (
+                      messages.map((msg, index) => (
+                        <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className={`max-w-[80%] p-3 rounded-lg ${
+                              msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {loading && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[80%] p-3 rounded-lg bg-muted flex items-center space-x-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <p>応答を生成中...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <form onSubmit={handleSubmit} className="w-full flex space-x-2">
+                    <Input
+                      placeholder="メッセージを入力..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      disabled={loading || !token || !selectedModel}
+                    />
+                    <Button type="submit" disabled={loading || !token || !selectedModel}>
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </form>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="json">
+              <Card>
+                <CardHeader>
+                  <CardTitle>JSONリクエスト/レスポンス</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">リクエスト</h3>
+                      <Textarea className="font-mono h-[200px]" readOnly value={requestJson} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">レスポンス</h3>
+                      <Textarea className="font-mono h-[200px]" readOnly value={responseJson} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  )
+}
