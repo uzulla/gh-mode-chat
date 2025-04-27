@@ -1,9 +1,8 @@
 "use client"
 
-import { Textarea } from "@/components/ui/textarea"
-
 import type React from "react"
 
+import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Send, Plus, Trash2, Key } from "lucide-react"
+import { Loader2, Send, Plus, Trash2, Key, Settings, ChevronDown } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
 
@@ -30,11 +29,13 @@ export default function Home() {
   const [newModel, setNewModel] = useState("")
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
+  const [systemPrompt, setSystemPrompt] = useState("")
   const [loading, setLoading] = useState(false)
   const [response, setResponse] = useState("")
   const [showJson, setShowJson] = useState(false)
   const [requestJson, setRequestJson] = useState("")
   const [responseJson, setResponseJson] = useState("")
+  const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false)
 
   const addModel = () => {
     if (newModel && !models.includes(newModel)) {
@@ -55,14 +56,28 @@ export default function Home() {
     e.preventDefault()
     if (!input.trim() || !token || !selectedModel) return
 
-    const newMessages = [...messages, { role: "user", content: input }]
-    setMessages(newMessages)
+    // ユーザーメッセージを作成
+    const userMessage = { role: "user" as const, content: input }
+
+    // 表示用のメッセージ配列を更新
+    setMessages([...messages, userMessage])
     setInput("")
     setLoading(true)
 
     try {
+      // APIリクエスト用のメッセージ配列を作成
+      const apiMessages: Message[] = []
+
+      // システムプロンプトがある場合は追加
+      if (systemPrompt.trim()) {
+        apiMessages.push({ role: "system", content: systemPrompt.trim() })
+      }
+
+      // 既存のメッセージとユーザーメッセージを追加
+      apiMessages.push(...messages, userMessage)
+
       const requestBody = {
-        messages: newMessages,
+        messages: apiMessages,
         model: selectedModel,
       }
 
@@ -82,7 +97,7 @@ export default function Home() {
 
       if (data.choices && data.choices.length > 0) {
         const assistantMessage = data.choices[0].message
-        setMessages([...newMessages, assistantMessage])
+        setMessages([...messages, userMessage, assistantMessage])
         setResponse(assistantMessage.content)
       } else {
         console.error("予期しないレスポンス形式:", data)
@@ -93,6 +108,10 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleSystemPrompt = () => {
+    setIsSystemPromptOpen(!isSystemPromptOpen)
   }
 
   return (
@@ -201,6 +220,36 @@ export default function Home() {
                   <CardDescription>GitHub AI APIを使用したチャット</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-4 border-b">
+                    <button
+                      onClick={toggleSystemPrompt}
+                      className="flex items-center justify-between w-full py-2 text-sm font-medium text-left"
+                    >
+                      <div className="flex items-center">
+                        <Settings className="h-4 w-4 mr-2" />
+                        システムプロンプト
+                      </div>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform duration-200 ${
+                          isSystemPromptOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {isSystemPromptOpen && (
+                      <div className="py-3">
+                        <Textarea
+                          placeholder="AIの動作を制御するシステムプロンプトを入力してください"
+                          value={systemPrompt}
+                          onChange={(e) => setSystemPrompt(e.target.value)}
+                          className="min-h-[100px] text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">
+                          システムプロンプトはAIの動作を指示するために使用され、各会話の先頭に追加されます。
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="h-[400px] overflow-y-auto mb-4 space-y-4 p-4 border rounded-md">
                     {messages.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
