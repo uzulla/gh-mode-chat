@@ -10,9 +10,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Send, Plus, Trash2, Key, Settings, ChevronDown } from "lucide-react"
+import { Loader2, Send, Plus, Trash2, Key, Settings } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import Link from "next/link"
+import {
+  CustomAccordion,
+  CustomAccordionItem,
+  CustomAccordionTrigger,
+  CustomAccordionContent,
+} from "@/components/custom-accordion"
 
 // OpenAIのモデルリスト
 const DEFAULT_MODELS = ["openai/gpt-4o", "openai/gpt-4-turbo", "openai/gpt-3.5-turbo"]
@@ -35,7 +41,6 @@ export default function Home() {
   const [showJson, setShowJson] = useState(false)
   const [requestJson, setRequestJson] = useState("")
   const [responseJson, setResponseJson] = useState("")
-  const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false)
 
   const addModel = () => {
     if (newModel && !models.includes(newModel)) {
@@ -108,10 +113,6 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const toggleSystemPrompt = () => {
-    setIsSystemPromptOpen(!isSystemPromptOpen)
   }
 
   return (
@@ -220,34 +221,30 @@ export default function Home() {
                   <CardDescription>GitHub AI APIを使用したチャット</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4 border-b">
-                    <button
-                      onClick={toggleSystemPrompt}
-                      className="flex items-center justify-between w-full py-2 text-sm font-medium text-left"
-                    >
-                      <div className="flex items-center">
-                        <Settings className="h-4 w-4 mr-2" />
-                        システムプロンプト
-                      </div>
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform duration-200 ${
-                          isSystemPromptOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-                    {isSystemPromptOpen && (
-                      <div className="py-3">
-                        <Textarea
-                          placeholder="AIの動作を制御するシステムプロンプトを入力してください"
-                          value={systemPrompt}
-                          onChange={(e) => setSystemPrompt(e.target.value)}
-                          className="min-h-[100px] text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground mt-2">
-                          システムプロンプトはAIの動作を指示するために使用され、各会話の先頭に追加されます。
-                        </p>
-                      </div>
-                    )}
+                  <div className="mb-4">
+                    <CustomAccordion>
+                      <CustomAccordionItem>
+                        <CustomAccordionTrigger>
+                          <div className="flex items-center">
+                            <Settings className="h-4 w-4 mr-2" />
+                            システムプロンプト
+                          </div>
+                        </CustomAccordionTrigger>
+                        <CustomAccordionContent>
+                          <div className="py-3">
+                            <Textarea
+                              placeholder="AIの動作を制御するシステムプロンプトを入力してください"
+                              value={systemPrompt}
+                              onChange={(e) => setSystemPrompt(e.target.value)}
+                              className="min-h-[100px] text-sm"
+                            />
+                            <p className="text-xs text-muted-foreground mt-2">
+                              システムプロンプトはAIの動作を指示するために使用され、各会話の先頭に追加されます。
+                            </p>
+                          </div>
+                        </CustomAccordionContent>
+                      </CustomAccordionItem>
+                    </CustomAccordion>
                   </div>
 
                   <div className="h-[400px] overflow-y-auto mb-4 space-y-4 p-4 border rounded-md">
