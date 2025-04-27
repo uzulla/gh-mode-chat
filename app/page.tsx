@@ -1,5 +1,7 @@
 "use client"
 
+import { Textarea } from "@/components/ui/textarea"
+
 import type React from "react"
 
 import { useState } from "react"
@@ -7,11 +9,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Loader2, Send, Plus, Trash2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2, Send, Plus, Trash2, Key } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
+import Link from "next/link"
 
 // OpenAIのモデルリスト
 const DEFAULT_MODELS = ["openai/gpt-4o", "openai/gpt-4-turbo", "openai/gpt-3.5-turbo"]
@@ -95,7 +97,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">GitHub Models チャットインターフェース</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">GitHub AI チャットインターフェース</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
@@ -107,13 +109,26 @@ export default function Home() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="token">GitHub トークン</Label>
-                <Input
-                  id="token"
-                  type="password"
-                  placeholder="ghp_..."
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                />
+                <div className="flex space-x-2">
+                  <Input
+                    id="token"
+                    type="password"
+                    placeholder="ghp_..."
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                  />
+                  <Link href="/token-generator">
+                    <Button variant="outline" size="icon" title="Fine-grained トークンを生成">
+                      <Key className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <Link href="/token-generator" className="text-primary hover:underline">
+                    Fine-grained トークンを生成
+                  </Link>
+                  （モデルへの読み取りアクセス権限が必要です）
+                </p>
               </div>
 
               <div className="space-y-2">
